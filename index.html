@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AcademyTracker — Real match analysis for young footballers</title>
+<meta name="description" content="AcademyTracker turns your own match footage into statistics, pitch maps and a training plan — and every number links back to the moment it came from.">
+<meta name="theme-color" content="#0B1A12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1A12;
+    --surface:#12281B;
+    --surface-2:#173323;
+    --line:rgba(247,245,236,.14);
+    --pitch:#2E7D4B;
+    --pitch-bright:#3C935D;
+    --chalk:#F7F5EC;
+    --chalk-dim:#C3D3C8;
+    --amber:#F2B705;
+    --amber-deep:#C79400;
+    --ink:#0B1A12;
+    --radius:16px;
+    --font:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--font);background:var(--bg);color:var(--chalk);line-height:1.55;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  a{color:inherit}
+  :focus-visible{outline:3px solid var(--amber);outline-offset:3px;border-radius:6px}
+  .wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 20px}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    font-family:var(--font);font-weight:800;font-size:1rem;text-decoration:none;
+    background:var(--amber);color:var(--ink);border:2px solid var(--amber);
+    padding:14px 26px;border-radius:999px;cursor:pointer;
+    transition:transform .15s ease,background .15s ease,box-shadow .15s ease;
+  }
+  .btn:hover{background:#FFC82B;transform:translateY(-2px);box-shadow:0 10px 26px rgba(242,183,5,.28)}
+  .btn svg{width:18px;height:18px;flex:none}
+  .btn-sm{padding:9px 18px;font-size:.88rem}
+  .btn-ghost{background:transparent;color:var(--chalk);border-color:var(--line)}
+  .btn-ghost:hover{background:rgba(247,245,236,.08);box-shadow:none;border-color:var(--chalk-dim)}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:20;background:rgba(11,26,18,.88);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  }
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;gap:12px}
+  .logo{font-weight:900;font-size:1.35rem;letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
+  .logo span{color:var(--amber)}
+  .nav-links{display:flex;align-items:center;gap:26px}
+  .nav-links a.link{font-weight:600;font-size:.92rem;text-decoration:none;color:var(--chalk-dim)}
+  .nav-links a.link:hover{color:var(--chalk)}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative;overflow:hidden;padding:72px 0 84px}
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 70% 60% at 85% 10%,rgba(46,125,75,.55),transparent 70%),
+      radial-gradient(ellipse 50% 50% at 0% 100%,rgba(31,90,54,.55),transparent 70%);
+    pointer-events:none;
+  }
+  .pitch-lines{position:absolute;inset:0;width:100%;height:100%;opacity:.5;pointer-events:none}
+  .hero .wrap{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+  .eyebrow{
+    display:inline-block;font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--amber);border:1.5px dashed rgba(242,183,5,.6);border-radius:999px;padding:6px 14px;margin-bottom:22px;
+  }
+  h1{font-weight:900;font-size:clamp(2.3rem,6vw,4.1rem);line-height:1.02;letter-spacing:-.025em}
+  h1 em{font-style:normal;color:var(--amber)}
+  .hero p.sub{font-size:clamp(1.05rem,2.2vw,1.25rem);color:var(--chalk-dim);max-width:34em;margin:22px 0 32px}
+  .hero-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .hero-note{margin-top:18px;font-size:.84rem;color:var(--chalk-dim)}
+
+  /* ---------- evidence card (illustration) ---------- */
+  .proof{
+    background:linear-gradient(165deg,var(--surface-2),var(--surface));border:1.5px solid var(--line);
+    border-radius:20px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.4);
+  }
+  .proof-tag{
+    font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--chalk-dim);
+    display:flex;justify-content:space-between;gap:8px;margin-bottom:14px;
+  }
+  .proof-tag b{color:var(--amber);font-weight:500}
+  .proof-stat{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .proof-stat strong{font-weight:900;font-size:2.8rem;line-height:1;color:var(--chalk)}
+  .proof-stat span{color:var(--chalk-dim);font-weight:600}
+  .proof-sub{font-size:.85rem;color:var(--chalk-dim);margin-bottom:16px}
+  .video{
+    position:relative;border-radius:12px;overflow:hidden;background:var(--pitch);aspect-ratio:16/8.5;
+    border:1.5px solid rgba(247,245,236,.18);
+  }
+  .video svg.field{position:absolute;inset:0;width:100%;height:100%}
+  .video .marker{
+    position:absolute;width:12px;height:12px;border-radius:50%;background:var(--amber);
+    box-shadow:0 0 0 6px rgba(242,183,5,.25);transform:translate(-50%,-50%);transition:left .35s ease,top .35s ease;
+  }
+  .video .time{
+    position:absolute;left:10px;bottom:10px;font-family:var(--mono);font-size:.74rem;
+    background:rgba(11,26,18,.75);padding:3px 9px;border-radius:6px;
+  }
+  .video .time b{color:var(--amber);font-weight:500}
+  .scrub{height:6px;background:rgba(247,245,236,.16);border-radius:99px;margin:12px 0;position:relative}
+  .scrub i{position:absolute;top:0;left:0;height:100%;width:0;background:var(--amber);border-radius:99px;transition:width .35s ease}
+  .moments{display:grid;gap:8px;list-style:none}
+  .moments button{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;
+    background:rgba(247,245,236,.05);border:1.5px solid transparent;color:var(--chalk);
+    font-family:var(--font);font-size:.88rem;font-weight:600;padding:10px 12px;border-radius:10px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  .moments button:hover{background:rgba(247,245,236,.1)}
+  .moments button[aria-pressed="true"]{border-color:var(--amber);background:rgba(242,183,5,.1)}
+  .moments .t{font-family:var(--mono);font-size:.8rem;color:var(--amber);flex:none}
+  .moments .res{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--chalk-dim);flex:none}
+
+  /* ---------- sections ---------- */
+  section.block{padding:84px 0}
+  section.alt{background:var(--surface)}
+  .kicker{font-family:var(--mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:12px}
+  h2{font-weight:900;font-size:clamp(1.7rem,4.2vw,2.7rem);line-height:1.08;letter-spacing:-.02em;max-width:18em}
+  .lede{color:var(--chalk-dim);font-size:1.08rem;max-width:40em;margin-top:16px}
+
+  /* problem */
+  .gap{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px}
+  .gap-col{border-radius:var(--radius);padding:26px;border:1.5px solid var(--line)}
+  .gap-col h3{font-weight:800;font-size:1.05rem;margin-bottom:14px}
+  .gap-col ul{list-style:none;display:grid;gap:10px}
+  .gap-col li{display:flex;gap:12px;align-items:flex-start;color:var(--chalk-dim)}
+  .gap-col li::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;margin-top:.55em}
+  .gap-top{background:var(--surface-2)}
+  .gap-top li::before{background:var(--pitch-bright)}
+  .gap-rest{background:transparent;border-style:dashed;border-color:rgba(242,183,5,.55)}
+  .gap-rest h3{color:var(--amber)}
+  .gap-rest li::before{background:transparent;border:2px solid var(--amber)}
+  .gap-punch{margin-top:30px;font-size:1.2rem;font-weight:700;max-width:34em}
+  .gap-punch span{color:var(--amber)}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px;counter-reset:s}
+  .step{background:var(--bg);border:1.5px solid var(--line);border-radius:var(--radius);padding:28px 24px;position:relative}
+  .step::before{
+    counter-increment:s;content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;
+    background:var(--amber);color:var(--ink);font-weight:900;font-size:1.2rem;margin-bottom:18px;
+  }
+  .step h3{font-weight:800;font-size:1.25rem;margin-bottom:8px}
+  .step p{color:var(--chalk-dim)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+  .tags span{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--chalk)}
+
+  /* features */
+  .features{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:44px}
+  .feature{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);padding:28px 26px;transition:border-color .15s ease,transform .15s ease}
+  .feature:hover{border-color:var(--pitch-bright);transform:translateY(-3px)}
+  .feature .ic{width:48px;height:48px;border-radius:12px;background:rgba(46,125,75,.35);display:grid;place-items:center;margin-bottom:18px}
+  .feature .ic svg{width:26px;height:26px}
+  .feature h3{font-weight:800;font-size:1.2rem;margin-bottom:8px}
+  .feature p{color:var(--chalk-dim)}
+  .feature.hl{border-color:rgba(242,183,5,.6);background:linear-gradient(165deg,#1d3b27,var(--surface))}
+  .feature.hl .ic{background:rgba(242,183,5,.2)}
+
+  /* final cta */
+  .cta{
+    text-align:center;border-radius:24px;padding:64px 24px;position:relative;overflow:hidden;
+    background:linear-gradient(160deg,var(--pitch) 0%,var(--surface-2) 100%);border:1.5px solid rgba(247,245,236,.18);
+  }
+  .cta h2{margin:0 auto}
+  .cta p{color:#E3EDE6;max-width:34em;margin:16px auto 28px;font-size:1.08rem}
+  .cta .hero-note{color:#E3EDE6}
+
+  footer{padding:36px 0 48px;color:var(--chalk-dim);font-size:.88rem}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;align-items:center}
+
+  /* reveal on scroll (only if JS runs) */
+  .js .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .js .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:900px){
+    .hero{padding:48px 0 60px}
+    .hero .wrap{grid-template-columns:1fr;gap:36px}
+    .steps{grid-template-columns:1fr}
+    section.block{padding:60px 0}
+  }
+  @media (max-width:640px){
+    .gap,.features{grid-template-columns:1fr}
+    .nav-links a.link{display:none}
+    .btn{width:100%}
+    .nav .btn{width:auto}
+    .hero-actions .btn{width:100%}
+    .cta{padding:48px 20px}
+    footer .wrap{flex-direction:column;align-items:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+    .js .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="AcademyTracker home">Academy<span>Tracker</span></a>
+    <nav class="nav-links" aria-label="Page sections">
+      <a class="link" href="#problem">The problem</a>
+      <a class="link" href="#how">How it works</a>
+      <a class="link" href="#features">Features</a>
+      <a class="btn btn-sm app-link" href="#">Try the app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="pitch-lines" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <g fill="none" stroke="#3C935D" stroke-width="2" opacity=".35">
+        <rect x="40" y="40" width="1120" height="520" rx="4"/>
+        <line x1="600" y1="40" x2="600" y2="560"/>
+        <circle cx="600" cy="300" r="90"/>
+        <rect x="40" y="170" width="170" height="260"/>
+        <rect x="990" y="170" width="170" height="260"/>
+      </g>
+    </svg>
+    <div class="wrap">
+      <div class="reveal">
+        <span class="eyebrow">For players aged 13 to 18</span>
+        <h1>Real match analysis for <em>every</em> young footballer.</h1>
+        <p class="sub">AcademyTracker turns your own match footage into statistics, pitch maps and a training plan — and every number links back to the moment it came from.</p>
+        <div class="hero-actions">
+          <a class="btn app-link" href="#">Open the live app
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <p class="hero-note">Concept stage. The live app is an early version. Figures shown on this page are illustrative.</p>
+      </div>
+
+      <!-- Illustration of a footage-linked statistic -->
+      <aside class="proof reveal" aria-label="Illustration: a statistic linked to footage">
+        <div class="proof-tag"><span>Example</span><b>Tap a moment · jump to the footage</b></div>
+        <div class="proof-stat"><strong>75%</strong><span>pass accuracy</span></div>
+        <p class="proof-sub">Built from 4 tagged passes. Each one opens at its exact second.</p>
+        <div class="video" id="video">
+          <svg class="field" viewBox="0 0 160 85" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect x="2" y="2" width="156" height="81" fill="none" stroke="#3C935D" stroke-width="1"/>
+            <line x1="80" y1="2" x2="80" y2="83" stroke="#3C935D" stroke-width="1"/>
+            <circle cx="80" cy="42.5" r="11" fill="none" stroke="#3C935D" stroke-width="1"/>
+            <rect x="2" y="24" width="20" height="37" fill="none" stroke="#3C935D" stroke-width="1"/>
+            <rect x="138" y="24" width="20" height="37" fill="none" stroke="#3C935D" stroke-width="1"/>
+          </svg>
+          <span class="marker" id="marker" style="left:30%;top:60%"></span>
+          <span class="time">Match video · <b id="clock">04:12</b></span>
+        </div>
+        <div class="scrub" aria-hidden="true"><i id="scrubfill" style="width:12%"></i></div>
+        <ul class="moments" id="moments">
+          <li><button type="button" aria-pressed="true" data-t="04:12" data-x="30" data-y="60" data-p="12"><span class="t">04:12</span><span>Pass</span><span class="res">Completed</span></button></li>
+          <li><button type="button" aria-pressed="false" data-t="17:40" data-x="55" data-y="35" data-p="38"><span class="t">17:40</span><span>Pass</span><span class="res">Completed</span></button></li>
+          <li><button type="button" aria-pressed="false" data-t="33:05" data-x="74" data-y="68" data-p="64"><span class="t">33:05</span><span>Pass</span><span class="res">Missed</span></button></li>
+          <li><button type="button" aria-pressed="false" data-t="41:58" data-x="82" data-y="28" data-p="88"><span class="t">41:58</span><span>Pass</span><span class="res">Completed</span></button></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="block alt" id="problem">
+    <div class="wrap">
+      <p class="kicker reveal">The problem</p>
+      <h2 class="reveal">The best data in youth football is locked behind a big budget.</h2>
+      <p class="lede reveal">GPS vests, multi-camera rigs and video analysts are standard at top academies. For everyone else they are completely out of reach.</p>
+
+      <div class="gap">
+        <div class="gap-col gap-top reveal">
+          <h3>At a top academy</h3>
+          <ul>
+            <li>GPS vests on every player</li>
+            <li>Multi-camera rigs around the pitch</li>
+            <li>Video analysts breaking down every match</li>
+          </ul>
+        </div>
+        <div class="gap-col gap-rest reveal">
+          <h3>Everywhere else</h3>
+          <ul>
+            <li>A phone propped on a tripod, or held by a parent</li>
+            <li>A recording that is watched once, then forgotten</li>
+            <li>No way to tell if you are really improving</li>
+          </ul>
+        </div>
+      </div>
+      <p class="gap-punch reveal">A talented 15-year-old should not need a club budget to understand their own game. <span>AcademyTracker is built for that player.</span></p>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="block" id="how">
+    <div class="wrap">
+      <p class="kicker reveal">How it works</p>
+      <h2 class="reveal">Three steps from final whistle to feedback.</h2>
+
+      <div class="steps">
+        <article class="step reveal">
+          <h3>Add your match</h3>
+          <p>Upload the recording you already have, filmed on any phone. Add the opponent and the date, and you are ready to go.</p>
+        </article>
+        <article class="step reveal">
+          <h3>Tag what happens while you watch</h3>
+          <p>Watch the match in the app and tap a button each time something happens. The app saves what it was and the exact second of video.</p>
+          <div class="tags" aria-label="Events you can tag"><span>Pass</span><span>Shot</span><span>Tackle</span><span>Dribble</span><span>Turnover</span></div>
+        </article>
+        <article class="step reveal">
+          <h3>Get statistics that link back to the footage</h3>
+          <p>Your statistics, pitch maps and training plan are built from your tags. Tap any number to see the moments behind it and check it yourself.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="block alt" id="features">
+    <div class="wrap">
+      <p class="kicker reveal">What you get</p>
+      <h2 class="reveal">Analysis you can trust, because you can check it.</h2>
+
+      <div class="features">
+        <article class="feature hl reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F2B705" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></svg></div>
+          <h3>Statistics linked to footage</h3>
+          <p>Every number comes from moments you tagged, and every moment opens at the exact second it happened. No mystery figures — just evidence you can watch.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F7F5EC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.6"/></svg></div>
+          <h3>Pitch maps</h3>
+          <p>See where your passes, shots and turnovers happened, so you can spot patterns in your game instead of guessing at them.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F7F5EC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 3 8-9"/><path d="M15 6h5v5"/></svg></div>
+          <h3>Season trends</h3>
+          <p>One match is noise; a season is a signal. Track how you are really changing across the games you add.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F7F5EC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg></div>
+          <h3>A training plan that fits you</h3>
+          <p>Get drills aimed at your weakest areas, with more work where you need it and less where you are already strong.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="block">
+    <div class="wrap">
+      <div class="cta reveal">
+        <h2>See your own game clearly.</h2>
+        <p>Try the live app and see what your match footage can tell you.</p>
+        <a class="btn app-link" href="#">Open the live app
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <p class="hero-note">Early version — we are still building. Your feedback shapes what comes next.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><strong>Academy<span style="color:var(--amber)">Tracker</span></strong> · Match analytics for grassroots and academy footballers aged 13 to 18.</span>
+    <span>Built in the Imperial EDGE AI Startup Accelerator.</span>
+  </div>
+</footer>
+
+<script>
+  /* ============================================================
+     LIVE APP LINK — edit this ONE line.
+     Replace the text between the quotes with your Base44 app URL
+     (it must start with https://). Every "Open the live app" /
+     "Try the app" button on the page uses it.
+     ============================================================ */
+  var APP_URL = "[PASTE YOUR BASE44 LINK]";
+
+  document.documentElement.className += " js";
+
+  /* point every app button at APP_URL (stays "#" until a real link is set) */
+  (function(){
+    var ready = /^https?:\/\//i.test(APP_URL);
+    var links = document.querySelectorAll("a.app-link");
+    for (var i = 0; i < links.length; i++){
+      if (ready){
+        links[i].href = APP_URL;
+        links[i].target = "_blank";
+        links[i].rel = "noopener";
+      }
+    }
+  })();
+
+  /* illustration: pick a tagged moment, the "video" jumps to it */
+  (function(){
+    var btns = document.querySelectorAll("#moments button");
+    var marker = document.getElementById("marker");
+    var clock = document.getElementById("clock");
+    var fill = document.getElementById("scrubfill");
+    for (var i = 0; i < btns.length; i++){
+      btns[i].addEventListener("click", function(){
+        for (var j = 0; j < btns.length; j++) btns[j].setAttribute("aria-pressed", btns[j] === this ? "true" : "false");
+        marker.style.left = this.getAttribute("data-x") + "%";
+        marker.style.top = this.getAttribute("data-y") + "%";
+        clock.textContent = this.getAttribute("data-t");
+        fill.style.width = this.getAttribute("data-p") + "%";
+      });
+    }
+  })();
+
+  /* gentle reveal on scroll; content is fully visible if this cannot run */
+  (function(){
+    var els = document.querySelectorAll(".reveal");
+    if (!("IntersectionObserver" in window)){
+      for (var i = 0; i < els.length; i++) els[i].classList.add("in");
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, {threshold: .12});
+    els.forEach(function(el){ io.observe(el); });
+  })();
+</script>
+</body>
+</html>
